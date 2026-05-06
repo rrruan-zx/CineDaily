@@ -5,8 +5,9 @@
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from get_random_movies import get_topic_movies, update_database
+from get_high_score_movies import get_movie_list, update_database
 import logging
+import time
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -72,10 +73,15 @@ class ScheduledMovieUpdater:
             print("\n正在获取最新电影...")
             
             # 获取电影并更新数据库
-            movies = get_topic_movies(count=10)
+            all_movies = []
+            # 扫描 3 页获取候选电影
+            for page in range(1, 4):
+                movies = get_movie_list(page, min_score=9.0)
+                all_movies.extend(movies)
+                time.sleep(1)
             
-            if movies:
-                update_database(movies)
+            if all_movies:
+                update_database(all_movies, clean_first=False, max_movies=10)
                 logger.info("电影数据更新成功")
                 print("[OK] 定时更新完成")
             else:
