@@ -61,7 +61,7 @@
         <main v-else class="container mx-auto px-4 py-8 max-w-6xl">
             <!-- 视频播放区域 -->
                 <div class="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 mb-6 relative">
-                    <!-- 检查是否是茶杯狐的 URL -->
+                    <!-- 检查是否是外部视频 URL -->
                     <div v-if="isChabeihuUrl(movie.video_url)" class="w-full h-full bg-black relative overflow-hidden">
                         <!-- iframe 容器 - 使用 transform 隐藏顶部导航 -->
                         <div class="iframe-container">
@@ -282,7 +282,7 @@
                     return [];
                 });
                 
-                <!-- 检查是否是茶杯狐的 URL -->
+                <!-- 检查是否是外部视频 URL -->
                 const isChabeihuUrl = (url) => {
                     if (!url) return false;
                     return url.includes('chabeihu.com.cn') || 
@@ -405,7 +405,7 @@
                             movie.value = await res.json();
                             console.log('电影详情:', movie.value);
                             console.log('视频 URL:', movie.value.video_url);
-                            console.log('是否茶杯狐 URL:', isChabeihuUrl(movie.value.video_url));
+                            console.log('是否是外部视频 URL:', isChabeihuUrl(movie.value.video_url));
                         } else {
                             error.value = '电影未找到';
                         }

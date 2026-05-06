@@ -69,7 +69,7 @@ class ScheduledMovieUpdater:
         """执行更新任务（内部方法）"""
         try:
             logger.info("开始执行定时电影数据更新...")
-            print("\n正在从茶杯狐获取最新电影...")
+            print("\n正在获取最新电影...")
             
             # 获取电影并更新数据库
             movies = get_topic_movies(count=10)

@@ -1,5 +1,5 @@
 """
-茶杯狐高评分电影爬虫（修正版）
+高评分电影爬虫（修正版）
 从分类页面筛选评分>=9.0 的电影
 URL 格式：https://cbh7.cc/vod/页码/39/0/0/0/0/0/0
 详情页：https://cbh7.cc/v/1395861/39
@@ -322,7 +322,7 @@ def update_database(movies, clean_first=True, max_movies=20, min_score=9.0, max_
 
 if __name__ == '__main__':
     print("=" * 80)
-    print("茶杯狐高评分电影爬虫（评分 9.0-10.0）")
+    print("高评分电影爬虫（评分 9.0-10.0）")
     print("=" * 80)
     print()
     
