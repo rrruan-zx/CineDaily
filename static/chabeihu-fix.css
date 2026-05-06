@@ -1,0 +1,75 @@
+/* 茶杯狐 iframe 样式优化 - 隐藏导航和广告 */
+
+/* iframe 容器样式 */
+.iframe-container {
+    width: 110%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    background: #000;
+}
+
+/* 茶杯狐 iframe 样式 - 裁剪顶部导航和底部区域，只保留视频 */
+.chabeihu-iframe {
+    width: 120%;
+    height: 100vh;
+    border: none;
+    background: #000;
+    
+    /* 使用 clip-path 裁剪：
+       顶部裁剪 100px（隐藏茶杯狐导航）
+       底部裁剪 0px（保留底部导航栏）
+       左右不裁剪
+    */
+    clip-path: inset(100px 0 0 0);
+    
+    /* 上移视频 + 放大 1.1 倍 */
+    transform: translateY(-12%) scale(1.09) translateX(0.8%);
+}
+
+/* 全屏模式 - 移除裁剪，显示完整视频 */
+:fullscreen .chabeihu-iframe,
+.fullscreen-mode .chabeihu-iframe {
+    width: 100vw;
+    height: 100vh;
+    clip-path: inset(0 0 0 0) !important;
+    transform: none !important;
+}
+
+/* 基础样式（备用） */
+iframe[src*="chabeihu.com.cn"] {
+    background: #000 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+}
+
+/* 视频加载动画 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* 错误提示样式 */
+.video-error {
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.video-error i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #ef4444;
+}
+
+.video-error p {
+    margin: 0.5rem 0;
+}

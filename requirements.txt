@@ -1,0 +1,21 @@
+# FastAPI 核心
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.0.0
+
+# 数据库
+pymysql==1.1.0
+
+# 异步任务
+celery==5.3.4
+redis==5.0.1
+
+# 定时任务
+apscheduler==3.10.4
+
+# Web 爬虫
+beautifulsoup4==4.12.2
+requests==2.31.0
+
+# 其他
+python-multipart==0.0.6

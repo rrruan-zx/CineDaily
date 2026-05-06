@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电影详情 - CineDaily</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="/static/chabeihu-fix.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0F172A',
+                        'brand-red': '#E50914'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1f1f1f;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-dark-bg text-gray-100 min-h-screen font-sans">
+    <div id="app">
+        <!-- 加载中 -->
+        <div v-if="loading" class="min-h-screen flex items-center justify-center">
+            <div class="text-center">
+                <i class="fas fa-circle-notch animate-spin text-5xl text-brand-red mb-4"></i>
+                <p class="text-xl">加载中...</p>
+            </div>
+        </div>
+        
+        <!-- 错误状态 -->
+        <div v-else-if="error" class="min-h-screen flex items-center justify-center">
+            <div class="text-center">
+                <i class="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
+                <p class="text-xl">{{ error }}</p>
+                <a href="index.html" class="mt-4 inline-block text-brand-red hover:underline">返回首页</a>
+            </div>
+        </div>
+        
+        <!-- 电影详情 -->
+        <main v-else class="container mx-auto px-4 py-8 max-w-6xl">
+            <!-- 视频播放区域 -->
+                <div class="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 mb-6 relative">
+                    <!-- 检查是否是茶杯狐的 URL -->
+                    <div v-if="isChabeihuUrl(movie.video_url)" class="w-full h-full bg-black relative overflow-hidden">
+                        <!-- iframe 容器 - 使用 transform 隐藏顶部导航 -->
+                        <div class="iframe-container">
+                            <iframe 
+                                :src="movie.video_url"
+                                class="chabeihu-iframe"
+                                frameborder="0"
+                                allowfullscreen
+                                allow="autoplay; fullscreen; picture-in-picture"
+                                scrolling="no"
+                                referrerpolicy="no-referrer"
+                                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock allow-top-navigation-by-user-activation"
+                                @load="handleIframeLoad"
+                                @error="handleIframeError">
+                            </iframe>
+                        </div>
+                        
+                        <!-- 加载提示 -->
+                        <div v-if="videoLoading" class="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+                            <div class="text-center text-white">
+                                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                                <p class="text-lg">视频加载中...</p>
+                                <p class="text-sm text-gray-400 mt-2">如果加载失败，请尝试切换线路</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 加载失败提示 -->
+                        <div v-if="videoError" class="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+                            <div class="text-center p-8">
+                                <i class="fas fa-exclamation-circle text-5xl text-red-500 mb-4"></i>
+                                <p class="text-gray-300 text-lg mb-4">视频加载失败</p>
+                                <p class="text-gray-400 text-sm mb-4">可能是网络问题或视频源不稳定</p>
+                                <a :href="movie.video_url" target="_blank" 
+                                   class="inline-block bg-brand-red text-white px-6 py-2 rounded hover:bg-red-700 transition">
+                                    <i class="fas fa-external-link-alt"></i> 在新窗口打开
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 普通视频播放器 -->
+                    <video 
+                        v-else-if="!videoError"
+                        class="w-full h-full object-contain" 
+                        controls 
+                        :poster="movie.bg"
+                        preload="metadata"
+                        playsinline
+                        @error="handleVideoError">
+                        <source :src="movie.video_url" type="video/mp4">
+                        <source :src="getBackupVideoUrl(movie.video_url)" type="video/mp4">
+                        您的浏览器不支持 HTML5 视频播放。
+                    </video>
+                    
+                    <!-- 备用视频源列表（隐藏） -->
+                    <video v-show="false" ref="backupVideo" preload="none">
+                        <source :src="backupVideoUrl" type="video/mp4">
+                    </video>
+                    
+                    <!-- 加载失败提示 -->
+                    <div v-if="videoError && !isChabeihuUrl(movie.video_url)" class="absolute inset-0 flex items-center justify-center bg-black/80">
+                        <div class="text-center p-8">
+                            <i class="fas fa-exclamation-circle text-5xl text-red-500 mb-4"></i>
+                            <p class="text-gray-300 text-lg mb-4">视频加载失败</p>
+                            <p class="text-gray-400 text-sm mb-4">正在尝试备用视频源...</p>
+                            <button @click="retryVideo" 
+                                    class="inline-block bg-brand-red text-white px-6 py-2 rounded hover:bg-red-700 transition mr-2">
+                                <i class="fas fa-redo"></i> 重试
+                            </button>
+                            <a :href="movie.video_url" target="_blank" 
+                               class="inline-block bg-gray-700 text-white px-6 py-2 rounded hover:bg-gray-600 transition">
+                                <i class="fas fa-external-link-alt"></i> 在新窗口打开
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            
+            <!-- 电影信息网格 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <!-- 左侧：详细信息 -->
+                <div class="lg:col-span-2 space-y-6">
+                    <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">
+                        {{ movie.title }}
+                    </h1>
+                    
+                    <div class="flex items-center gap-4 text-sm text-gray-400">
+                        <span>{{ movie.year }}</span>
+                        <span class="border border-gray-600 px-1 rounded text-xs">HD</span>
+                        <span class="text-green-500 font-bold">推荐指数 {{ movie.score }}</span>
+                    </div>
+                    
+                    <!-- 标签循环渲染 -->
+                    <div class="flex gap-2">
+                        <span v-for="tag in tagList" :key="tag" 
+                              class="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded">
+                            {{ tag }}
+                        </span>
+                    </div>
+                    
+                    <!-- 描述 -->
+                    <p class="text-gray-300 text-lg leading-relaxed">
+                        {{ movie.desc }}
+                    </p>
+                    
+                    <!-- 按钮组 -->
+                    <div class="pt-4 border-t border-gray-800">
+                        <button @click="shareMovie" 
+                                class="bg-white text-black px-6 py-2 rounded font-bold hover:bg-gray-200 transition cursor-pointer">
+                            <i class="fas fa-share"></i> 分享给好友
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 右侧：导演和演员信息卡片 -->
+                <div class="space-y-4">
+                    <!-- 导演卡片 -->
+                    <div class="bg-[#1f1f1f] p-6 rounded-lg">
+                        <h3 class="text-gray-500 text-sm font-bold uppercase tracking-widest mb-4">导演</h3>
+                        <div class="bg-gray-800 p-4 rour gnded-lg border border-gray-700 flex items-centeap-3">
+                            <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-video text-gray-400"></i>
+                            </div>
+                            <span class="text-white font-medium">{{ movie.director }}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 演员列表卡片 -->
+                    <div class="bg-[#1f1f1f] p-6 rounded-lg">
+                        <h3 class="text-gray-500 text-sm font-bold uppercase tracking-widest mb-4">演员列表</h3>
+                        <div class="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                            <div v-for="actor in actorList" :key="actor" 
+                                 class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex items-center gap-3 hover:border-gray-600 transition">
+                                <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-user text-gray-400"></i>
+                                </div>
+                                <span class="text-white font-medium">{{ actor }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 底部导航栏 -->
+        <footer class="bg-[#1a1a1a] border-t border-gray-800 py-4 mt-8">
+            <div class="container mx-auto px-4 max-w-6xl">
+                <div class="flex justify-between items-center">
+                    <a href="index.html" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-home mr-2"></i>返回首页
+                    </a>
+                    <div class="text-gray-500 text-sm">
+                        CineDaily © 2026
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                const movie = ref(null);
+                const loading = ref(true);
+                const error = ref(null);
+                const videoError = ref(false);
+                const imageError = ref(false);
+                const backupVideoUrl = ref('');
+                const retryCount = ref(0);
+                const videoLoading = ref(true);
+                const isFullscreen = ref(false);
+                
+                // 监听全屏状态变化
+                const handleFullscreenChange = () => {
+                    isFullscreen.value = !!document.fullscreenElement;
+                };
+                
+                onMounted(() => {
+                    document.addEventListener('fullscreenchange', handleFullscreenChange);
+                });
+                
+                // 备用视频源映射（如果主视频失败，切换到备用）
+                const backupVideoMap = {
+                    'BigBuckBunny': 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+                    'ElephantsDream': 'https://media.w3.org/2010/05/bunny/trailer.mp4',
+                    'Sintel': 'https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Sintel_-_Blender_Foundation%27s_4th_Open_Movie_CCBY_3.0.webm/Sintel_-_Blender_Foundation%27s_4th_Open_Movie_CCBY_3.0.webm.480p.vp9.webm',
+                    'TearsOfSteel': 'https://upload.wikimedia.org/wikipedia/commons/transcoded/1/10/Tears_of_Steel_%282012%29.webm/Tears_of_Steel_%282012%29.webm.480p.vp9.webm',
+                    'default': 'https://media.w3.org/2010/05/sintel/trailer.mp4'  // 辛特尔预告片（W3C 官方）
+                };
+                
+                // 计算属性：将标签字符串转换为数组
+                const tagList = computed(() => {
+                    if (movie.value && movie.value.tag) {
+                        return movie.value.tag.split(' / ');
+                    }
+                    return [];
+                });
+                
+                // 计算属性：将演员字符串转换为数组（支持多种分隔符）
+                const actorList = computed(() => {
+                    if (movie.value && movie.value.actor) {
+                        const actorStr = movie.value.actor;
+                        // 尝试多种分隔符：顿号、逗号、空格
+                        let actors = [];
+                        if (actorStr.includes('、')) {
+                            actors = actorStr.split('、').map(a => a.trim()).filter(a => a);
+                        } else if (actorStr.includes(',')) {
+                            actors = actorStr.split(/[,]/).map(a => a.trim()).filter(a => a);
+                        } else if (actorStr.includes(' ')) {
+                            actors = actorStr.split(/[\s]+/).map(a => a.trim()).filter(a => a);
+                        } else {
+                            // 如果没有分隔符，直接返回整个字符串
+                            actors = [actorStr];
+                        }
+                        return actors;
+                    }
+                    return [];
+                });
+                
+                <!-- 检查是否是茶杯狐的 URL -->
+                const isChabeihuUrl = (url) => {
+                    if (!url) return false;
+                    return url.includes('chabeihu.com.cn') || 
+                           url.includes('cbh7.cc') || 
+                           url.includes('/v/') ||
+                           url.includes('/p/');
+                };
+                
+                // 获取备用视频 URL
+                const getBackupVideoUrl = (mainUrl) => {
+                    if (!mainUrl) return backupVideoMap.default;
+                    
+                    // 根据主视频名查找备用视频
+                    for (const [key, url] of Object.entries(backupVideoMap)) {
+                        if (key !== 'default' && mainUrl.includes(key)) {
+                            return url;
+                        }
+                    }
+                    return backupVideoMap.default;
+                };
+                
+                // 重试视频加载
+                const retryVideo = () => {
+                    retryCount.value++;
+                    if (retryCount.value <= 3) {
+                        videoError.value = false;
+                        // 切换备用视频源
+                        if (movie.value) {
+                            const currentUrl = movie.value.video_url;
+                            movie.value.video_url = getBackupVideoUrl(currentUrl);
+                            backupVideoUrl.value = backupVideoMap.default;
+                        }
+                        setTimeout(() => {
+                            videoError.value = true; // 重新触发错误检测
+                        }, 100);
+                    }
+                };
+                
+                // 处理视频加载错误
+                const handleVideoError = (e) => {
+                    console.error('视频加载失败:', e);
+                    videoError.value = true;
+                    videoLoading.value = false;
+                    
+                    // 自动尝试备用视频源
+                    if (retryCount.value < 2) {
+                        setTimeout(() => {
+                            retryVideo();
+                        }, 1000);
+                    }
+                };
+                
+                // 处理 iframe 加载完成
+                const handleIframeLoad = () => {
+                    console.log('iframe 加载完成');
+                    videoLoading.value = false;
+                };
+                
+                // 处理 iframe 加载错误
+                const handleIframeError = (e) => {
+                    console.error('iframe 加载失败:', e);
+                    videoError.value = true;
+                    videoLoading.value = false;
+                };
+                
+                // 处理图片加载错误
+                const handleImageError = () => {
+                    console.warn('背景图片加载失败，使用默认图片');
+                    imageError.value = true;
+                    // 使用默认背景图
+                    movie.value.bg = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=2025&q=80';
+                };
+                
+                // 分享电影
+                const shareMovie = () => {
+                    if (!movie.value) return;
+                    
+                    // 使用电影的原始视频链接，而不是本地页面链接
+                    const shareUrl = movie.value.video_url || movie.value.detail_url || window.location.href;
+                    const shareTitle = `推荐你看这部电影：${movie.value.title}`;
+                    
+                    // 尝试使用系统分享 API（移动端）
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'CineDaily - 电影推荐',
+                            text: shareTitle,
+                            url: shareUrl
+                        }).then(() => {
+                            console.log('分享成功');
+                        }).catch((error) => {
+                            console.log('分享取消或失败:', error);
+                        });
+                    } else {
+                        // 桌面端：复制链接到剪贴板
+                        navigator.clipboard.writeText(shareUrl).then(() => {
+                            alert('电影链接已复制到剪贴板！\n\n' + shareUrl);
+                        }).catch(() => {
+                            // 备用方案：使用 prompt
+                            prompt('请手动复制电影链接:', shareUrl);
+                        });
+                    }
+                };
+                
+                onMounted(async () => {
+                    try {
+                        // 1. 从 URL 获取电影 ID
+                        const params = new URLSearchParams(window.location.search);
+                        const movieId = params.get('id');
+                        
+                        if (!movieId) {
+                            error.value = '未指定电影 ID';
+                            loading.value = false;
+                            return;
+                        }
+                        
+                        // 2. 向后端发起请求
+                        const res = await fetch(`/api/movie/${movieId}`);
+                        
+                        if (res.ok) {
+                            movie.value = await res.json();
+                            console.log('电影详情:', movie.value);
+                            console.log('视频 URL:', movie.value.video_url);
+                            console.log('是否茶杯狐 URL:', isChabeihuUrl(movie.value.video_url));
+                        } else {
+                            error.value = '电影未找到';
+                        }
+                    } catch (e) {
+                        console.error('请求出错:', e);
+                        error.value = '加载失败，请重试';
+                    } finally {
+                        loading.value = false;
+                    }
+                });
+                
+                return {
+                    movie,
+                    loading,
+                    error,
+                    tagList,
+                    actorList,
+                    videoError,
+                    imageError,
+                    backupVideoUrl,
+                    videoLoading,
+                    isChabeihuUrl,
+                    getBackupVideoUrl,
+                    retryVideo,
+                    handleVideoError,
+                    handleIframeLoad,
+                    handleIframeError,
+                    handleImageError,
+                    shareMovie
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

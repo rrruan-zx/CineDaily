@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电影管理后台 - DailyMove</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- 头部 -->
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">
+                    <i class="fas fa-film text-blue-500"></i> 电影管理后台
+                </h1>
+                <p class="text-gray-400">管理电影数据库 - FastAPI 实际应用场景</p>
+            </div>
+            <a href="/static/index.html" class="text-blue-500 hover:text-blue-400">
+                <i class="fas fa-home"></i> 返回首页
+            </a>
+        </header>
+
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div class="flex items-center">
+                    <i class="fas fa-film text-blue-500 text-3xl"></i>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold">{{ movies.length }}</div>
+                        <div class="text-gray-400">电影总数</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div class="flex items-center">
+                    <i class="fas fa-star text-yellow-500 text-3xl"></i>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold">{{ avgScore }}</div>
+                        <div class="text-gray-400">平均评分</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div class="flex items-center">
+                    <i class="fas fa-clock text-green-500 text-3xl"></i>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold">{{ latestYear }}</div>
+                        <div class="text-gray-400">最新年份</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div class="flex items-center">
+                    <i class="fas fa-bolt text-purple-500 text-3xl"></i>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold">{{ responseTime }}ms</div>
+                        <div class="text-gray-400">响应时间</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加电影 -->
+        <div class="bg-gray-800 rounded-xl p-6 mb-8 border border-gray-700">
+            <h2 class="text-2xl font-bold mb-4">
+                <i class="fas fa-plus-circle text-blue-500"></i> 添加电影
+            </h2>
+            <form @submit.prevent="addMovie" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input v-model="newMovie.title" type="text" placeholder="电影标题 *" required
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                
+                <input v-model.number="newMovie.year" type="number" placeholder="年份 *" required min="1900" max="2030"
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                
+                <input v-model="newMovie.tag" type="text" placeholder="类型"
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                
+                <input v-model.number="newMovie.score" type="number" step="0.1" min="0" max="10" placeholder="评分 *" required
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                
+                <input v-model="newMovie.director" type="text" placeholder="导演"
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                
+                <input v-model="newMovie.actor" type="text" placeholder="主演"
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500">
+                
+                <input v-model="newMovie.video_url" type="url" placeholder="视频链接 *" required
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500 md:col-span-2">
+                
+                <input v-model="newMovie.bg" type="url" placeholder="背景图片链接"
+                       class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500 md:col-span-2">
+                
+                <textarea v-model="newMovie.desc" placeholder="电影简介" rows="3"
+                          class="bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500 md:col-span-2"></textarea>
+                
+                <button type="submit" :disabled="loading"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold transition disabled:opacity-50 md:col-span-2">
+                    <i class="fas fa-plus mr-2"></i> 添加电影
+                </button>
+            </form>
+        </div>
+
+        <!-- 电影列表 -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">
+                    <i class="fas fa-list text-blue-500"></i> 电影列表
+                </h2>
+                <button @click="loadMovies" class="text-blue-500 hover:text-blue-400">
+                    <i class="fas fa-sync" :class="{'fa-spin': loading}"></i> 刷新
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-2">ID</th>
+                            <th class="text-left py-3 px-2">标题</th>
+                            <th class="text-left py-3 px-2">年份</th>
+                            <th class="text-left py-3 px-2">类型</th>
+                            <th class="text-left py-3 px-2">评分</th>
+                            <th class="text-left py-3 px-2">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="movie in movies" :key="movie.id" class="border-b border-gray-700 hover:bg-gray-750">
+                            <td class="py-3 px-2 text-gray-400">{{ movie.id }}</td>
+                            <td class="py-3 px-2">
+                                <div class="font-bold">{{ movie.title }}</div>
+                                <div class="text-xs text-gray-500 truncate max-w-xs">{{ movie.desc }}</div>
+                            </td>
+                            <td class="py-3 px-2">{{ movie.year }}</td>
+                            <td class="py-3 px-2">
+                                <span class="bg-gray-700 px-2 py-1 rounded text-xs">{{ movie.tag }}</span>
+                            </td>
+                            <td class="py-3 px-2">
+                                <div class="flex items-center">
+                                    <i class="fas fa-star text-yellow-500 mr-1"></i>
+                                    <span>{{ movie.score }}</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-2">
+                                <button @click="editMovie(movie)" class="text-blue-500 hover:text-blue-400 mr-2">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button @click="deleteMovie(movie.id)" class="text-red-500 hover:text-red-400">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr v-if="movies.length === 0">
+                            <td colspan="6" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-inbox text-4xl mb-2"></i>
+                                <p>暂无电影数据</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const movies = ref([]);
+                const loading = ref(false);
+                const newMovie = ref({
+                    title: '',
+                    year: new Date().getFullYear(),
+                    tag: '剧情',
+                    score: 7.0,
+                    desc: '',
+                    director: '未知',
+                    actor: '未知',
+                    video_url: '',
+                    bg: ''
+                });
+
+                // 加载电影列表
+                const loadMovies = async () => {
+                    loading.value = true;
+                    try {
+                        const start = performance.now();
+                        const response = await fetch('/api/movies');
+                        const data = await response.json();
+                        movies.value = data;
+                        responseTime.value = Math.round(performance.now() - start);
+                    } catch (error) {
+                        alert('加载失败：' + error.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // 添加电影
+                const addMovie = async () => {
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/api/movies', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newMovie.value)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (response.ok) {
+                            alert('添加成功！');
+                            // 重置表单
+                            newMovie.value = {
+                                title: '',
+                                year: new Date().getFullYear(),
+                                tag: '剧情',
+                                score: 7.0,
+                                desc: '',
+                                director: '未知',
+                                actor: '未知',
+                                video_url: '',
+                                bg: ''
+                            };
+                            await loadMovies();
+                        } else {
+                            alert('添加失败：' + result.detail);
+                        }
+                    } catch (error) {
+                        alert('添加失败：' + error.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // 删除电影
+                const deleteMovie = async (id) => {
+                    if (!confirm('确定要删除这部电影吗？')) return;
+                    
+                    loading.value = true;
+                    try {
+                        await fetch(`/api/movie/${id}`, { method: 'DELETE' });
+                        alert('删除成功！');
+                        await loadMovies();
+                    } catch (error) {
+                        alert('删除失败：' + error.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // 编辑电影（简单实现，实际应该用弹窗）
+                const editMovie = (movie) => {
+                    const newTitle = prompt('修改标题:', movie.title);
+                    if (newTitle) {
+                        movie.title = newTitle;
+                        // 实际应该调用更新 API
+                    }
+                };
+
+                // 计算属性
+                const avgScore = computed(() => {
+                    if (movies.value.length === 0) return '0.0';
+                    const avg = movies.value.reduce((sum, m) => sum + m.score, 0) / movies.value.length;
+                    return avg.toFixed(1);
+                });
+
+                const latestYear = computed(() => {
+                    if (movies.value.length === 0) return '-';
+                    return Math.max(...movies.value.map(m => m.year));
+                });
+
+                const responseTime = ref(0);
+
+                // 初始加载
+                onMounted(loadMovies);
+
+                return {
+                    movies,
+                    loading,
+                    newMovie,
+                    avgScore,
+                    latestYear,
+                    responseTime,
+                    loadMovies,
+                    addMovie,
+                    deleteMovie,
+                    editMovie
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

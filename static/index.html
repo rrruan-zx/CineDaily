@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineDaily - 每日电影推荐</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .bg-layer {
+            transition: opacity 0.7s ease-in-out;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .fade-enter-active,
+        .fade-leave-active {
+            transition: opacity 0.5s ease;
+        }
+        
+        .fade-enter-from,
+        .fade-leave-to {
+            opacity: 0;
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* 电影简介悬停展开效果 */
+        .movie-desc {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .movie-desc-group:hover .movie-desc {
+            -webkit-line-clamp: unset;
+            max-height: 500px;
+        }
+        
+        .movie-desc-group:hover .desc-expand-hint {
+            opacity: 1;
+        }
+        
+        .desc-expand-hint {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="bg-black h-screen w-screen overflow-hidden text-white relative">
+        <!-- 背景层：直接使用 currentMovie.bg -->
+        <div class="bg-layer absolute inset-0 w-full h-full"
+             :style="currentMovie.bg ? { backgroundImage: `url(${currentMovie.bg})` } : {}"></div>
+        
+        <!-- 遮罩层：提升内容可读性 -->
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent z-10"></div>
+        
+        <!-- 导航栏：固定在左上角，品牌标识 -->
+        <nav class="absolute top-0 left-0 p-6 z-20">
+            <div class="text-brand-red font-black text-2xl tracking-tighter uppercase">
+                <span class="text-red-500">CINE</span>DAILY
+            </div>
+        </nav>
+        
+        <!-- 内容区：居中布局，包含电影信息和交互按钮 -->
+        <main class="relative z-20 h-full flex flex-col justify-center px-8 md:px-20 max-w-4xl">
+            <transition name="fade" mode="out-in">
+                <div v-if="currentMovie.id" :key="currentMovie.id">
+                    <!-- 标签和评分 -->
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="bg-white/20 backdrop-blur border border-white/10 px-2 py-0.5 rounded text-sm">
+                            {{ currentMovie.tag }}
+                        </span>
+                        <span class="text-yellow-400 font-bold">
+                            <i class="fas fa-star"></i> {{ currentMovie.score }}
+                        </span>
+                    </div>
+                    
+                    <!-- 标题 -->
+                    <h1 class="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+                        {{ currentMovie.title }}
+                    </h1>
+                    
+                    <!-- 描述 - 鼠标悬停显示全部 -->
+                    <div class="relative mb-8 max-w-2xl movie-desc-group group">
+                        <p class="movie-desc text-gray-300 text-lg md:text-xl">
+                            {{ currentMovie.desc }}
+                        </p>
+                        <!-- 悬停提示 -->
+                        <span class="desc-expand-hint absolute bottom-0 right-0 text-xs text-gray-400">
+                            <i class="fas fa-expand"></i> 查看全部
+                        </span>
+                    </div>
+                    
+                    <!-- 按钮组 -->
+                    <div class="flex gap-4">
+                        <a :href="`detail.html?id=${currentMovie.id}`" 
+                           class="bg-brand-red hover:bg-red-700 text-white px-8 py-3 rounded font-bold text-lg flex items-center gap-2 transition">
+                            <i class="fas fa-play"></i> 立即观看
+                        </a>
+                        <button @click="fetchMovie" 
+                                :disabled="loading"
+                                class="bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-white px-6 py-3 rounded font-bold text-lg flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-random" :class="{ 'animate-spin': loading }"></i>
+                            {{ loading ? '加载中...' : '换一个' }}
+                        </button>
+                    </div>
+                </div>
+                <div v-else class="text-center">
+                    <i class="fas fa-film text-6xl mb-4"></i>
+                    <p class="text-xl">加载中...</p>
+                </div>
+            </transition>
+        </main>
+    </div>
+    
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                const currentMovie = ref({});
+                const loading = ref(false);
+                
+                const fetchMovie = async () => {
+                    if (loading.value) return;
+                    
+                    loading.value = true;
+                    try {
+                        // 循环获取电影，直到找到符合条件的
+                        let attempts = 0;
+                        let maxAttempts = 10; // 最多尝试 10 次
+                        
+                        while (attempts < maxAttempts) {
+                            const res = await fetch('/api/movie/random');
+                            const data = await res.json();
+                            
+                            // 筛查：过滤掉标题中包含"预告"或"集"的电影
+                            const title = data.title || '';
+                            if (!title.includes('预告') && !title.includes('集')) {
+                                currentMovie.value = data;
+                                break;
+                            }
+                            
+                            attempts++;
+                        }
+                        
+                        // 如果尝试多次都没找到合适的，使用最后一次获取的结果
+                        if (attempts >= maxAttempts) {
+                            currentMovie.value = data;
+                        }
+                    } catch (err) {
+                        console.error('获取电影失败:', err);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+                
+                onMounted(() => {
+                    fetchMovie();
+                });
+                
+                return {
+                    currentMovie,
+                    loading,
+                    fetchMovie
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
