@@ -1,7 +1,4 @@
-"""
-FastAPI 技术展示主应用
-整合：Pydantic 验证、中间件、依赖注入、Celery、WebSocket
-"""
+"""FastAPI 技术展示主应用"""
 from fastapi import FastAPI, Depends, HTTPException, status, Request, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -11,7 +8,6 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 
-# 导入自定义模块
 from models import (
     MovieCreate, MovieUpdate, MovieResponse, 
     APIResponse, PerformanceMetrics, TaskStatus
@@ -34,23 +30,18 @@ from tasks import (
 from websocket_manager import websocket_manager, setup_websocket_logger
 from scheduler import create_scheduler
 
-# 配置日志
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# 全局变量：定时任务调度器
 movie_scheduler = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    FastAPI 生命周期管理（替代弃用的 on_event）
-    """
-    # 启动事件
+    """FastAPI 生命周期管理"""
     logger.info("=" * 80)
     logger.info("FastAPI 技术展示平台启动中...")
     logger.info("=" * 80)
@@ -64,7 +55,6 @@ async def lifespan(app: FastAPI):
     logger.info("访问 /tech-stack 查看技术栈说明")
     logger.info("=" * 80)
     
-    # 启动定时更新任务
     global movie_scheduler
     try:
         movie_scheduler = create_scheduler(DB_CONFIG, update_interval='daily', hour=2)
@@ -75,10 +65,8 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # 关闭事件
     logger.info("FastAPI 应用正在关闭...")
     
-    # 停止定时任务
     if movie_scheduler:
         try:
             movie_scheduler.stop()
