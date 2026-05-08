@@ -43,15 +43,6 @@ def get_db() -> Generator[pymysql.Connection, None, None]:
             db.close()
 
 
-def get_db_cursor(db: pymysql.Connection = Depends(get_db)):
-    """数据库游标依赖注入"""
-    cursor = db.cursor(pymysql.cursors.DictCursor)
-    try:
-        yield cursor
-    finally:
-        cursor.close()
-
-
 class MovieService:
     """电影服务类"""
     
@@ -160,28 +151,3 @@ def validate_page_params(page: int = 1, page_size: int = 10) -> tuple:
     if page_size < 1 or page_size > 100:
         page_size = 10
     return page, page_size
-
-
-class CacheService:
-    """缓存服务（内存模拟）"""
-    
-    def __init__(self):
-        self._cache = {}
-    
-    def get(self, key: str):
-        return self._cache.get(key)
-    
-    def set(self, key: str, value, ttl: int = 300):
-        self._cache[key] = value
-    
-    def delete(self, key: str):
-        if key in self._cache:
-            del self._cache[key]
-    
-    def clear(self):
-        self._cache.clear()
-
-
-def get_cache_service() -> CacheService:
-    """缓存服务依赖注入"""
-    return CacheService()

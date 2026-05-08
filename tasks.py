@@ -1,25 +1,18 @@
-"""
-Celery 异步任务配置
-展示异步任务队列技术
-"""
+"""Celery 异步任务配置"""
 from celery import Celery
 import time
 import logging
 from datetime import datetime
 
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Celery 配置
-# 生产环境：使用 Redis 作为消息代理和结果存储
 celery_app = Celery(
     'tasks',
-    broker='redis://localhost:6379/0',  # Redis 作为消息代理
-    backend='redis://localhost:6379/1',  # Redis 存储结果
+    broker='redis://localhost:6379/0',
+    backend='redis://localhost:6379/1',
 )
 
-# 配置优化
 celery_app.conf.update(
     task_serializer='json',
     accept_content=['json'],
@@ -27,11 +20,11 @@ celery_app.conf.update(
     timezone='Asia/Shanghai',
     enable_utc=True,
     task_track_started=True,
-    task_time_limit=300,  # 任务超时 5 分钟
-    task_always_eager=False,  # 异步执行
+    task_time_limit=300,
+    task_always_eager=False,
 )
 
-# 检查 Redis 连接
+
 def check_redis_connection():
     """检查 Redis 连接状态"""
     try:
@@ -43,11 +36,10 @@ def check_redis_connection():
     except Exception as e:
         logger.warning(f"⚠️  Redis 未连接：{e}")
         logger.warning("Celery 将使用同步模式（task_always_eager=True）")
-        # 自动切换到同步模式
         celery_app.conf.task_always_eager = True
         return False
 
-# 启动时检查 Redis 连接
+
 check_redis_connection()
 
 
@@ -126,27 +118,12 @@ def batch_update_movies(self, movie_ids: list):
 
 @celery_app.task
 def send_notification(message: str):
-    """
-    发送通知（示例任务）
-    展示简单任务
-    """
+    """发送通知"""
     logger.info(f"发送通知：{message}")
-    time.sleep(1)  # 模拟发送延迟
+    time.sleep(1)
     return {'status': 'sent', 'message': message}
 
 
-@celery_app.task
-def cleanup_old_data(days: int = 30):
-    """
-    清理旧数据（示例任务）
-    展示定时清理任务
-    """
-    logger.info(f"开始清理 {days} 天前的数据")
-    time.sleep(2)  # 模拟清理操作
-    return {'status': 'cleaned', 'days': days}
-
-
-# 任务状态管理
 task_status_store = {}
 
 
@@ -170,7 +147,6 @@ def get_task_status(task_id: str):
     })
 
 
-# 健康检查
 @celery_app.task
 def health_check():
     """Celery 健康检查"""

@@ -1,7 +1,4 @@
-"""
-Pydantic 数据模型 - 展示 FastAPI 的数据验证能力
-使用 Pydantic v2 新特性
-"""
+"""Pydantic 数据模型 - 使用 Pydantic v2"""
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
@@ -26,7 +23,6 @@ class MovieCreate(MovieBase):
     @field_validator('title')
     @classmethod
     def title_not_empty(cls, v):
-        """验证标题不为空"""
         if not v.strip():
             raise ValueError('电影标题不能为空')
         return v.strip()
@@ -34,7 +30,6 @@ class MovieCreate(MovieBase):
     @field_validator('score')
     @classmethod
     def score_valid(cls, v):
-        """验证评分合理性"""
         if v < 0 or v > 10:
             raise ValueError('评分必须在 0-10 之间')
         return round(v, 1)
@@ -82,14 +77,6 @@ class PerformanceMetrics(BaseModel):
 class TaskStatus(BaseModel):
     """异步任务状态模型"""
     task_id: str
-    status: str  # pending, processing, completed, failed
+    status: str
     result: Optional[dict] = None
     error: Optional[str] = None
-
-
-class LogMessage(BaseModel):
-    """日志消息模型"""
-    level: str  # INFO, WARNING, ERROR
-    message: str
-    timestamp: datetime = Field(default_factory=datetime.now)
-    source: str = ""

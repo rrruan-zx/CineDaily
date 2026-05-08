@@ -403,9 +403,6 @@
                         
                         if (res.ok) {
                             movie.value = await res.json();
-                            console.log('电影详情:', movie.value);
-                            console.log('视频 URL:', movie.value.video_url);
-                            console.log('是否是外部视频 URL:', isChabeihuUrl(movie.value.video_url));
                         } else {
                             error.value = '电影未找到';
                         }

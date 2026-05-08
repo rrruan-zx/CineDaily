@@ -1,4 +1,4 @@
-"""FastAPI 技术展示主应用"""
+"""FastAPI 技术应用"""
 from fastapi import FastAPI, Depends, HTTPException, status, Request, WebSocket
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -21,7 +21,7 @@ from middleware import (
 from dependencies import (
     get_db, get_movie_service, MovieService,
     validate_movie_id, validate_page_params,
-    get_cache_service, CacheService, DB_CONFIG
+    DB_CONFIG
 )
 from tasks import (
     fetch_movie_detail, batch_update_movies,
@@ -313,27 +313,6 @@ async def get_recent_requests(limit: int = 10):
     stats = get_performance_stats()
     recent = stats.get('recent_requests', [])[-limit:]
     return [PerformanceMetrics(**item) for item in recent]
-
-
-# ==================== 缓存服务 API（示例） ====================
-
-@app.get('/api/cache/test')
-async def test_cache(cache: CacheService = Depends(get_cache_service)):
-    """
-    测试缓存服务
-    - 展示依赖注入缓存服务
-    """
-    # 设置缓存
-    cache.set('test_key', {'message': 'Hello from cache'}, ttl=300)
-    
-    # 获取缓存
-    cached_data = cache.get('test_key')
-    
-    return {
-        "success": True,
-        "message": "缓存测试成功",
-        "data": {'cached': cached_data}
-    }
 
 
 # ==================== 健康检查 API ====================
