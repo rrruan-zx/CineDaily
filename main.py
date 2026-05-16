@@ -1,5 +1,5 @@
 """FastAPI 技术应用"""
-from fastapi import FastAPI, Depends, HTTPException, status, Request, WebSocket
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
 from contextlib import asynccontextmanager
@@ -27,7 +27,6 @@ from tasks import (
     fetch_movie_detail, batch_update_movies,
     send_notification, get_task_status
 )
-from websocket_manager import websocket_manager, setup_websocket_logger
 from scheduler import create_scheduler
 
 logging.basicConfig(
@@ -98,9 +97,6 @@ create_cors_middleware(app)
 create_performance_middleware(app)
 create_error_handler(app)
 
-# 设置 WebSocket 日志处理器
-setup_websocket_logger(websocket_manager)
-
 # 配置静态文件
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
@@ -108,30 +104,6 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 @app.get("/")
 async def root():
     return RedirectResponse(url="/static/index.html")
-
-
-# ==================== WebSocket 端点 ====================
-
-@app.websocket("/ws/logs")
-async def websocket_logs(websocket: WebSocket):
-    """
-    WebSocket 实时日志端点
-    连接到日志服务，实时接收系统日志
-    """
-    await websocket_manager.connect(websocket, room="logs")
-    try:
-        while True:
-            # 保持连接
-            data = await websocket.receive_text()
-            # 可以处理客户端消息
-            if data == "ping":
-                await websocket_manager.send_personal_message(
-                    websocket,
-                    {'type': 'pong', 'timestamp': datetime.now().isoformat()}
-                )
-    except Exception as e:
-        logger.error(f"WebSocket 错误：{e}")
-        websocket_manager.disconnect(websocket)
 
 
 # ==================== 电影 API（使用依赖注入和 Pydantic 验证） ====================
