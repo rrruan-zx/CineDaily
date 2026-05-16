@@ -24,7 +24,7 @@
     clip-path: inset(100px 0 0 0);
     
     /* 上移视频 + 放大 1.1 倍 */
-    transform: translateY(-12%) scale(1.09) translateX(0.8%);
+    transform: translateY(-10.7%) scale(1.09) translateX(0.8%);
 }
 
 /* 全屏模式 - 移除裁剪，显示完整视频 */
